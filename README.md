@@ -4,6 +4,9 @@ This repository contains the executable research code for the
 leakage-controlled experiments reported in the revised manuscript
 "Multilingual SMS Spam Detection via PCA-Based Embedding Fusion."
 
+The archival release is available at
+[https://doi.org/10.5281/zenodo.22731775](https://doi.org/10.5281/zenodo.22731775).
+
 The workflow covers source-group splitting, conventional text baselines,
 static embedding fusion, dimensionality-reduction controls, fine-tuned mBERT,
 statistical analysis, and resource profiling. Translated versions of one
@@ -78,4 +81,4 @@ study.
 ## Citation
 
 Until the manuscript receives its final bibliographic record, cite this
-repository using `CITATION.cff` and include the accessed commit or release.
+repository using `CITATION.cff` and DOI `10.5281/zenodo.22731775`.
