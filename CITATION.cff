@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the accompanying manuscript and this repository."
+title: "Code for Multilingual SMS Spam Detection via PCA-Based Embedding Fusion"
+type: software
+authors:
+  - family-names: Yudistira
+    given-names: Novanto
+  - family-names: Maulana
+    given-names: Firman
+  - family-names: Santoso
+    given-names: Edy
+repository-code: "https://github.com/cbasemaster/multilingual-sms-spam-pca"
+license: GPL-3.0-only
+version: 1.0.0
+date-released: 2026-09-13

@@ -1,0 +1,81 @@
+# Multilingual SMS Spam Detection via PCA-Based Embedding Fusion
+
+This repository contains the executable research code for the
+leakage-controlled experiments reported in the revised manuscript
+"Multilingual SMS Spam Detection via PCA-Based Embedding Fusion."
+
+The workflow covers source-group splitting, conventional text baselines,
+static embedding fusion, dimensionality-reduction controls, fine-tuned mBERT,
+statistical analysis, and resource profiling. Translated versions of one
+source message are assigned to the same data partition.
+
+## Repository contents
+
+- `analysis/revision_audit.py`: preprocessing, row-versus-group split audit,
+  and reference baseline analysis.
+- `analysis/grouped_baseline_benchmark.py`: grouped conventional baselines.
+- `analysis/grouped_embedding_fusion_experiment.py`: static embedding fusion,
+  PCA/random-projection controls, CNN training, evaluation, and profiling.
+- `analysis/audit_embedding_extraction.py`: native-tokenizer embedding audit.
+- `analysis/finetune_mbert_grouped.py`: grouped fine-tuned mBERT experiment.
+- `analysis/summarize_*.py`: statistical and language-level summaries.
+- `requirements.txt`: verified Python dependencies.
+
+The repository intentionally does not redistribute SMS texts or per-message
+predictions. The scripts write all generated splits, predictions, summaries,
+and audit files to user-selected output directories.
+
+## Environment
+
+The verified environment used Python 3.11.9 with the package versions pinned
+in `requirements.txt`. The neural experiments were run on an NVIDIA GeForce
+RTX 5060 Laptop GPU. Public pretrained model weights are downloaded from their
+providers on first execution.
+
+The model identifiers are:
+
+- `distilbert-base-multilingual-cased`
+- `bert-base-multilingual-uncased`
+
+## Data preparation
+
+Obtain the public
+[SMS Spam Multilingual Collection Dataset](https://huggingface.co/datasets/dbarbedillo/SMS_Spam_Multilingual_Collection_Dataset)
+from its provider and save the wide-format table as a Parquet file. The input
+must contain `group_id`, `labels`, and the multilingual text columns (`text`
+and columns beginning with `text_`). See `DATA_LICENSE.md` for attribution and
+licensing information. The bilingual Indonesian-English corpus is not used by
+these source-group scripts and is not distributed here.
+
+## Reproduction
+
+Create an isolated Python environment, install the dependencies, and run the
+commands from the repository root. Replace `<dataset.parquet>` with the path
+to the prepared multilingual dataset.
+
+```powershell
+python -m pip install -r requirements.txt
+python analysis/revision_audit.py --dataset <dataset.parquet> --output-dir results/classical
+python analysis/grouped_baseline_benchmark.py --dataset <dataset.parquet> --output-dir results/classical
+python analysis/grouped_embedding_fusion_experiment.py --dataset <dataset.parquet> --output-dir results/grouped_embedding_fusion --batch-size 1024 --embedding-batch-size 256 --max-epochs 30 --max-length 128
+python analysis/summarize_fusion_experiment.py --experiment-dir results/grouped_embedding_fusion --bootstrap-repetitions 1000
+python analysis/audit_embedding_extraction.py --experiment-dir results/grouped_embedding_fusion --batch-size 256
+python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-dir results/finetuned_mbert_grouped --batch-size 32 --max-length 64 --max-epochs 1 --seeds 13 42 101
+python analysis/summarize_finetuned_mbert.py --audit-dir results --bootstrap-repetitions 1000
+```
+
+The static-fusion experiment uses one fixed source-group partition (split seed
+42) and CNN seeds 13, 21, 42, 87, and 101. Conventional baselines use five
+grouped split seeds. Fine-tuned mBERT uses seeds 13, 42, and 101.
+
+## Scope
+
+This code reproduces the source-group experiments added during revision. The
+historical row-split tables are retained in the manuscript only as explicitly
+labeled exploratory results and are not the primary evidence of the revised
+study.
+
+## Citation
+
+Until the manuscript receives its final bibliographic record, cite this
+repository using `CITATION.cff` and include the accessed commit or release.
