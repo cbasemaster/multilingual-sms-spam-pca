@@ -19,6 +19,8 @@ source message are assigned to the same data partition.
 - `analysis/grouped_baseline_benchmark.py`: grouped conventional baselines.
 - `analysis/grouped_embedding_fusion_experiment.py`: static embedding fusion,
   PCA/random-projection controls, CNN training, evaluation, and profiling.
+- `analysis/grouped_qwen_embedding_fusion_experiment.py`: grouped Qwen2.5 and
+  mBERT/Qwen2.5 centered-PCA extension with NF4 offline extraction.
 - `analysis/audit_embedding_extraction.py`: native-tokenizer embedding audit.
 - `analysis/finetune_mbert_grouped.py`: grouped fine-tuned mBERT experiment.
 - `analysis/summarize_*.py`: statistical and language-level summaries.
@@ -39,6 +41,7 @@ The model identifiers are:
 
 - `distilbert-base-multilingual-cased`
 - `bert-base-multilingual-uncased`
+- `Qwen/Qwen2.5-7B-Instruct`
 
 ## Data preparation
 
@@ -63,13 +66,17 @@ python analysis/grouped_baseline_benchmark.py --dataset <dataset.parquet> --outp
 python analysis/grouped_embedding_fusion_experiment.py --dataset <dataset.parquet> --output-dir results/grouped_embedding_fusion --batch-size 1024 --embedding-batch-size 256 --max-epochs 30 --max-length 128
 python analysis/summarize_fusion_experiment.py --experiment-dir results/grouped_embedding_fusion --bootstrap-repetitions 1000
 python analysis/audit_embedding_extraction.py --experiment-dir results/grouped_embedding_fusion --batch-size 256
+python analysis/grouped_qwen_embedding_fusion_experiment.py --dataset <dataset.parquet> --model-path models/Qwen2.5-7B-Instruct --mbert-matrix results/grouped_embedding_fusion/embedding_bert-base-multilingual-uncased.npy --reference-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --output-dir results/grouped_qwen_embedding_fusion --batch-size 1024 --embedding-batch-size 16 --max-epochs 30 --max-length 128
+python analysis/summarize_qwen_fusion_experiment.py --new-dir results/grouped_qwen_embedding_fusion --old-dir results/grouped_embedding_fusion --bootstrap-repetitions 5000
 python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-dir results/finetuned_mbert_grouped --batch-size 32 --max-length 64 --max-epochs 1 --seeds 13 42 101
 python analysis/summarize_finetuned_mbert.py --audit-dir results --bootstrap-repetitions 1000
 ```
 
-The static-fusion experiment uses one fixed source-group partition (split seed
-42) and CNN seeds 13, 21, 42, 87, and 101. Conventional baselines use five
-grouped split seeds. Fine-tuned mBERT uses seeds 13, 42, and 101.
+The static-fusion experiments use one fixed source-group partition (split seed
+42) and CNN seeds 13, 21, 42, 87, and 101. Download the official Qwen2.5
+checkpoint to the path passed through `--model-path`; it is loaded in NF4 only
+for offline vocabulary extraction. Conventional baselines use five grouped
+split seeds. Fine-tuned mBERT uses seeds 13, 42, and 101.
 
 ## Scope
 
