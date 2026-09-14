@@ -10,7 +10,7 @@ authors:
   - family-names: Santoso
     given-names: Edy
 repository-code: "https://github.com/cbasemaster/multilingual-sms-spam-pca"
-doi: "10.5281/zenodo.22731775"
+doi: "10.5281/zenodo.22759057"
 license: GPL-3.0-only
-version: 1.0.1
-date-released: 2026-09-13
+version: 1.0.2
+date-released: 2026-09-15
