@@ -24,6 +24,9 @@ source message are assigned to the same data partition.
 - `analysis/grouped_qwen_pca_sweep_experiment.py`: validation-only PCA/RP width
   selection, corrected zero-padding treatment, matched five-seed controls,
   source-group bootstrap, surface-perturbation tests, and trade-off plots.
+- `analysis/grouped_mbert_qwen_char_tfidf_concat_pca_cnn.py`: token-aligned
+  character TF-IDF extension, joint mBERT/Qwen2.5/character-feature PCA width
+  selection, matched five-seed CNN evaluation, and resource profiling.
 - `analysis/audit_embedding_extraction.py`: native-tokenizer embedding audit.
 - `analysis/finetune_mbert_grouped.py`: grouped fine-tuned mBERT experiment.
 - `analysis/summarize_*.py`: statistical and language-level summaries.
@@ -72,6 +75,7 @@ python analysis/audit_embedding_extraction.py --experiment-dir results/grouped_e
 python analysis/grouped_qwen_embedding_fusion_experiment.py --dataset <dataset.parquet> --model-path models/Qwen2.5-7B-Instruct --mbert-matrix results/grouped_embedding_fusion/embedding_bert-base-multilingual-uncased.npy --reference-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --output-dir results/grouped_qwen_embedding_fusion --batch-size 1024 --embedding-batch-size 16 --max-epochs 30 --max-length 128
 python analysis/summarize_qwen_fusion_experiment.py --new-dir results/grouped_qwen_embedding_fusion --old-dir results/grouped_embedding_fusion --bootstrap-repetitions 5000
 python analysis/grouped_qwen_pca_sweep_experiment.py --dataset <dataset.parquet> --mbert-matrix results/grouped_embedding_fusion/embedding_bert-base-multilingual-uncased.npy --qwen-matrix results/grouped_qwen_embedding_fusion/embedding_qwen2.5-7b-instruct_nf4.npy --reference-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --output-dir results/grouped_qwen_pca_sweep --dims 768 1024 1536 2048 --physical-batch-size 256 --effective-batch-size 1024 --max-epochs 30 --max-length 128
+python analysis/grouped_mbert_qwen_char_tfidf_concat_pca_cnn.py --dataset <dataset.parquet> --embedding-concat results/grouped_qwen_pca_sweep/embedding_mbert_qwen_standardized_concat.npy --reference-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --output-dir results/grouped_mbert_qwen_char_tfidf_concat_pca_cnn --char-dimension 1024 --dims 768 1024 1536 2048 --physical-batch-size 256 --effective-batch-size 1024 --max-epochs 30 --max-length 128
 python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-dir results/finetuned_mbert_grouped --batch-size 32 --max-length 64 --max-epochs 1 --seeds 13 42 101
 python analysis/summarize_finetuned_mbert.py --audit-dir results --bootstrap-repetitions 1000
 ```
