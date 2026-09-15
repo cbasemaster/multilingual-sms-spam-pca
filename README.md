@@ -32,6 +32,8 @@ source message are assigned to the same data partition.
   character-feature fusion configurations.
 - `analysis/evaluate_distil_mbert_pca1024_test.py`: matched five-seed test
   evaluation of DistilBERT/mBERT Concat+PCA-1024.
+- `analysis/evaluate_tfidf_svd1024_test.py`: fixed-split 1,024-dimensional
+  Truncated-SVD controls for the retained TF-IDF/classifier variations.
 - `analysis/audit_embedding_extraction.py`: native-tokenizer embedding audit.
 - `analysis/finetune_mbert_grouped.py`: grouped fine-tuned mBERT experiment.
 - `analysis/summarize_*.py`: statistical and language-level summaries.
@@ -83,6 +85,7 @@ python analysis/grouped_qwen_pca_sweep_experiment.py --dataset <dataset.parquet>
 python analysis/grouped_mbert_qwen_char_tfidf_concat_pca_cnn.py --dataset <dataset.parquet> --embedding-concat results/grouped_qwen_pca_sweep/embedding_mbert_qwen_standardized_concat.npy --reference-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --output-dir results/grouped_mbert_qwen_char_tfidf_concat_pca_cnn --char-dimension 1024 --dims 768 1024 1536 2048 --physical-batch-size 256 --effective-batch-size 1024 --max-epochs 30 --max-length 128
 python analysis/evaluate_all_pca_dimensions_test.py --dataset <dataset.parquet> --reference-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --qwen-pca-matrix results/grouped_qwen_pca_sweep/embedding_mbert_qwen_pca2048_max.npy --qwen-experiment-dir results/grouped_qwen_pca_sweep --char-pca-matrix results/grouped_mbert_qwen_char_tfidf_concat_pca_cnn/embedding_mbert_qwen_char_concat_pca2048_max.npy --char-experiment-dir results/grouped_mbert_qwen_char_tfidf_concat_pca_cnn --output-dir results/all_pca_dimensions_test --dims 768 1024 1536 2048 --physical-batch-size 256 --effective-batch-size 1024 --max-epochs 30 --max-length 128
 python analysis/evaluate_distil_mbert_pca1024_test.py --dataset <dataset.parquet> --source-dir results/grouped_embedding_fusion --output-dir results/distil_mbert_pca1024_test --batch-size 1024 --max-epochs 30 --max-length 128
+python analysis/evaluate_tfidf_svd1024_test.py --dataset <dataset.parquet> --output-dir results/tfidf_svd1024_test --svd-iterations 4
 python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-dir results/finetuned_mbert_grouped --batch-size 32 --max-length 64 --max-epochs 1 --seeds 13 42 101
 python analysis/summarize_finetuned_mbert.py --audit-dir results --bootstrap-repetitions 1000
 ```
