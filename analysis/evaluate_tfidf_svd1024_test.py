@@ -72,12 +72,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--fold-file", type=Path)
+    parser.add_argument("--seeds", type=int, nargs="+", default=list(SEEDS))
     parser.add_argument("--svd-iterations", type=int, default=4)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     data = load_long_dataset(args.dataset)
-    train, validation, test = split_groups(data, SPLIT_SEED)
+    if args.fold_file:
+        with np.load(args.fold_file) as parts:
+            train, validation, test = (parts[key] for key in ("train", "validation", "test"))
+    else:
+        train, validation, test = split_groups(data, SPLIT_SEED)
     train_text = data.iloc[train]["clean_text"]
     test_text = data.iloc[test]["clean_text"]
     y_train = data.iloc[train]["label"].to_numpy()
@@ -126,7 +132,7 @@ def main() -> None:
         projection_seconds = time.perf_counter() - start
         retained_variance = float(svd.explained_variance_ratio_.sum())
 
-        for seed in SEEDS:
+        for seed in args.seeds:
             for model_name, model in classifiers(feature_name, seed).items():
                 if (model_name, seed) in completed:
                     continue

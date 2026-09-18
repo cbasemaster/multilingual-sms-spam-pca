@@ -3,10 +3,13 @@
 This repository contains the executable research code for the
 leakage-controlled experiments reported in the revised manuscript
 "Multilingual SMS Spam Detection via PCA-Based Embedding Fusion."
+The principal Table 7 evaluation uses five disjoint source-group test folds;
+the earlier fixed-split workflow is retained for comparison.
 
-The archival release is available at
+An earlier fixed-split release is archived at
 [https://doi.org/10.5281/zenodo.22788881](https://doi.org/10.5281/zenodo.22788881)
-(release `v1.0.5`, commit `ce8003a`).
+(release `v1.0.5`, commit `ce8003a`). That DOI does not identify the five-fold
+Table 7 extension.
 
 The workflow covers source-group splitting, conventional text baselines,
 static embedding fusion, dimensionality-reduction controls, fine-tuned mBERT,
@@ -40,6 +43,15 @@ source message are assigned to the same data partition.
 - `analysis/audit_embedding_extraction.py`: native-tokenizer embedding audit.
 - `analysis/finetune_mbert_grouped.py`: grouped fine-tuned mBERT experiment.
 - `analysis/summarize_*.py`: statistical and language-level summaries.
+- `analysis/make_source_group_folds.py`, `prepare_cv5_embedding_matrices.py`,
+  `run_cv5_fusion_core.py`, and `summarize_source_group_cv5.py`: the five-fold
+  source-group workflow used for the principal Table 7 estimates.
+- `analysis/prepare_cv5_llama_embeddings.py`, `run_cv5_llama_fusion.py`, and
+  `run_cv5_triple_fusion.py`: matched Llama-2/Qwen2.5 and
+  mBERT/Qwen2.5/Llama-2 input-table controls. Their summaries and paired
+  comparisons are produced by `summarize_cv5_llama_fusion.py` and
+  `summarize_cv5_triple_fusion.py`.
+- `REPRODUCE_CV5.md`: commands and partition details for the five-fold results.
 - `requirements.txt`: verified Python dependencies.
 
 The repository intentionally does not redistribute SMS texts or per-message
@@ -58,6 +70,7 @@ The model identifiers are:
 - `distilbert-base-multilingual-cased`
 - `bert-base-multilingual-uncased`
 - `Qwen/Qwen2.5-7B-Instruct`
+- `meta-llama/Llama-2-7b` (licensed, gated checkpoint; weights not redistributed)
 
 ## Data preparation
 
@@ -71,9 +84,10 @@ these source-group scripts and is not distributed here.
 
 ## Reproduction
 
-Create an isolated Python environment, install the dependencies, and run the
-commands from the repository root. Replace `<dataset.parquet>` with the path
-to the prepared multilingual dataset.
+Create an isolated Python environment and install the dependencies. Follow
+`REPRODUCE_CV5.md` for the principal five-fold Table 7 experiments. The
+commands below reproduce the earlier fixed-split experiments. Replace
+`<dataset.parquet>` with the prepared multilingual dataset path.
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -94,7 +108,7 @@ python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-d
 python analysis/summarize_finetuned_mbert.py --audit-dir results --bootstrap-repetitions 1000
 ```
 
-The static-fusion experiments use one fixed source-group partition (split seed
+The earlier static-fusion experiments use one fixed source-group partition (split seed
 42) and CNN seeds 13, 21, 42, 87, and 101. Download the official Qwen2.5
 checkpoint to the path passed through `--model-path`; it is loaded in NF4 only
 for offline vocabulary extraction. The PCA sweep excludes the padding entry
@@ -111,5 +125,5 @@ study.
 
 ## Citation
 
-Until the manuscript receives its final bibliographic record, cite this
-repository using `CITATION.cff` and DOI `10.5281/zenodo.22788881`.
+The DOI `10.5281/zenodo.22788881` cites the earlier `v1.0.5` release only.
+Do not use it as the permanent identifier for the five-fold Table 7 extension.

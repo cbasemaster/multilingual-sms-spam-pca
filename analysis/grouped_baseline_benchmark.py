@@ -62,6 +62,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--fold-dir", type=Path)
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,8 +70,13 @@ def main() -> None:
     rows: list[dict[str, float | int | str]] = []
     prediction_frames: list[pd.DataFrame] = []
 
-    for seed in SEEDS:
-        train, _, test = split_groups(data, seed)
+    for fold, seed in enumerate(SEEDS, start=1):
+        if args.fold_dir:
+            with np.load(args.fold_dir / f"fold_{fold}.npz") as parts:
+                train, test = parts["train"], parts["test"]
+        else:
+            train, _, test = split_groups(data, seed)
+        model_seed = 42 if args.fold_dir else seed
         train_text = data.iloc[train]["clean_text"]
         test_text = data.iloc[test]["clean_text"]
         y_train = data.iloc[train]["label"].to_numpy()
@@ -107,13 +113,13 @@ def main() -> None:
                     C=2.0,
                     class_weight="balanced",
                     max_iter=500,
-                    random_state=seed,
+                    random_state=model_seed,
                     solver="liblinear",
                 ),
             ),
             "Char-TFIDF + Linear SVM": (
                 "char",
-                LinearSVC(C=1.0, class_weight="balanced", random_state=seed),
+                LinearSVC(C=1.0, class_weight="balanced", random_state=model_seed),
             ),
             "Word-TFIDF + LR": (
                 "word",
@@ -121,13 +127,13 @@ def main() -> None:
                     C=2.0,
                     class_weight="balanced",
                     max_iter=500,
-                    random_state=seed,
+                    random_state=model_seed,
                     solver="liblinear",
                 ),
             ),
             "Word-TFIDF + Linear SVM": (
                 "word",
-                LinearSVC(C=1.0, class_weight="balanced", random_state=seed),
+                LinearSVC(C=1.0, class_weight="balanced", random_state=model_seed),
             ),
         }
 
@@ -138,7 +144,8 @@ def main() -> None:
             seed_predictions[model_name] = pred
             rows.append(
                 {
-                    "seed": seed,
+                    "seed": model_seed,
+                    "fold": fold if args.fold_dir else None,
                     "model": model_name,
                     "train_rows": len(train),
                     "test_rows": len(test),
@@ -154,7 +161,7 @@ def main() -> None:
 
         # Shared latent semantic features make nonlinear baselines tractable.
         svd_start = time.perf_counter()
-        svd = TruncatedSVD(n_components=128, n_iter=4, random_state=seed)
+        svd = TruncatedSVD(n_components=128, n_iter=4, random_state=model_seed)
         x_train_svd = svd.fit_transform(matrices["word"])
         scaler = StandardScaler()
         x_train_dense = scaler.fit_transform(x_train_svd).astype(np.float32)
@@ -167,13 +174,13 @@ def main() -> None:
                 early_stopping=True,
                 max_iter=50,
                 n_iter_no_change=5,
-                random_state=seed,
+                random_state=model_seed,
             ),
             "Word-TFIDF + SVD + HistGB": HistGradientBoostingClassifier(
                 learning_rate=0.08,
                 max_iter=120,
                 max_leaf_nodes=31,
-                random_state=seed,
+                random_state=model_seed,
             ),
         }
 
@@ -191,7 +198,8 @@ def main() -> None:
             seed_predictions[model_name] = pred
             rows.append(
                 {
-                    "seed": seed,
+                    "seed": model_seed,
+                    "fold": fold if args.fold_dir else None,
                     "model": model_name,
                     "train_rows": len(train),
                     "test_rows": len(test),
@@ -207,10 +215,12 @@ def main() -> None:
                 }
             )
 
-        if seed == 42:
+        if args.fold_dir or seed == 42:
             base = data.iloc[test][["group_id", "language_column", "label"]].reset_index(drop=True)
             for model_name, pred in seed_predictions.items():
                 frame = base.copy()
+                if args.fold_dir:
+                    frame["fold"] = fold
                 frame["model"] = model_name
                 frame["prediction"] = pred
                 prediction_frames.append(frame)
@@ -276,7 +286,9 @@ def main() -> None:
     runs.to_csv(args.output_dir / "grouped_baseline_runs.csv", index=False)
     summary.to_csv(args.output_dir / "grouped_baseline_summary.csv", index=False)
     efficiency.to_csv(args.output_dir / "grouped_baseline_efficiency.csv", index=False)
-    predictions.to_csv(args.output_dir / "grouped_baseline_seed42_predictions.csv", index=False)
+    prediction_name = ("grouped_baseline_all_fold_predictions.csv" if args.fold_dir
+                       else "grouped_baseline_seed42_predictions.csv")
+    predictions.to_csv(args.output_dir / prediction_name, index=False)
     language_metrics.to_csv(args.output_dir / "grouped_baseline_language_metrics.csv", index=False)
     pd.DataFrame(tests).to_csv(args.output_dir / "grouped_baseline_mcnemar.csv", index=False)
     print(summary.round(4).to_string(index=False))

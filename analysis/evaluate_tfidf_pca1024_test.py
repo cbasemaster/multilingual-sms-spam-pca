@@ -113,6 +113,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--fold-file", type=Path)
+    parser.add_argument("--seeds", type=int, nargs="+", default=list(SEEDS))
     parser.add_argument("--features", nargs="+", choices=("char", "word"),
                         default=("char", "word"))
     parser.add_argument("--oversamples", type=int, default=16)
@@ -122,7 +124,11 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     data = load_long_dataset(args.dataset)
-    train, validation, test = split_groups(data, SPLIT_SEED)
+    if args.fold_file:
+        with np.load(args.fold_file) as parts:
+            train, validation, test = (parts[key] for key in ("train", "validation", "test"))
+    else:
+        train, validation, test = split_groups(data, SPLIT_SEED)
     train_text = data.iloc[train]["clean_text"]
     test_text = data.iloc[test]["clean_text"]
     y_train = data.iloc[train]["label"].to_numpy()
@@ -166,7 +172,7 @@ def main() -> None:
         print(feature, "pca", "variance", variance, "projection_s",
               round(projection_seconds, 2), flush=True)
 
-        for seed in SEEDS:
+        for seed in args.seeds:
             for old_name, model in classifiers(feature, seed).items():
                 name = old_name.replace("SVD-1024", "PCA-1024")
                 if (name, seed) in completed:

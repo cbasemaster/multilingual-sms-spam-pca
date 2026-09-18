@@ -8,3 +8,4 @@ pyarrow==23.0.1
 joblib
 accelerate==1.13.0
 bitsandbytes==0.50.2
+sentencepiece==0.2.1

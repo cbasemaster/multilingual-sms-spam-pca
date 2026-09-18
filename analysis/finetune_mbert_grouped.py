@@ -197,6 +197,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--fold-file", type=Path)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--max-length", type=int, default=128)
     parser.add_argument("--max-epochs", type=int, default=3)
@@ -206,7 +207,11 @@ def main() -> None:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_long_dataset(args.dataset)
-    train, validation, test = split_groups(data, SPLIT_SEED)
+    if args.fold_file:
+        with np.load(args.fold_file) as parts:
+            train, validation, test = (parts[key] for key in ("train", "validation", "test"))
+    else:
+        train, validation, test = split_groups(data, SPLIT_SEED)
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_NAME,
         local_files_only=True,
@@ -259,6 +264,7 @@ def main() -> None:
     metadata = {
         "model": MODEL_NAME,
         "split_seed": SPLIT_SEED,
+        "fold_file": str(args.fold_file) if args.fold_file else None,
         "seeds": args.seeds,
         "split_counts": {"train": len(train), "validation": len(validation), "test": len(test)},
         "max_length": args.max_length,
