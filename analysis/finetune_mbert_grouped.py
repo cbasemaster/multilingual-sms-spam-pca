@@ -1,4 +1,4 @@
-"""Fine-tune mBERT on the fixed leakage-controlled source-group split."""
+"""Fine-tune a multilingual transformer on a leakage-controlled source-group split."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from sklearn.metrics import (
     cohen_kappa_score,
     f1_score,
     matthews_corrcoef,
+    roc_curve,
     roc_auc_score,
 )
 from torch import nn
@@ -38,9 +39,9 @@ MODEL_NAME = "bert-base-multilingual-uncased"
 SPLIT_SEED = 42
 
 
-def metrics(labels: np.ndarray, logits: np.ndarray) -> dict[str, float]:
+def metrics(labels: np.ndarray, logits: np.ndarray, threshold: float = 0.5) -> dict[str, float]:
     probabilities = 1 / (1 + np.exp(-np.clip(logits, -30, 30)))
-    predictions = (probabilities >= 0.5).astype(np.int8)
+    predictions = (probabilities >= threshold).astype(np.int8)
     return {
         "accuracy": accuracy_score(labels, predictions),
         "spam_f1": f1_score(labels, predictions, zero_division=0),
@@ -53,6 +54,28 @@ def metrics(labels: np.ndarray, logits: np.ndarray) -> dict[str, float]:
         "brier": brier_score_loss(labels, probabilities),
         "ece_15": expected_calibration_error(labels, probabilities),
     }
+
+
+def choose_validation_threshold(labels: np.ndarray, logits: np.ndarray) -> tuple[float, float]:
+    probabilities = 1 / (1 + np.exp(-np.clip(logits, -30, 30)))
+    false_positive_rate, true_positive_rate, thresholds = roc_curve(
+        labels, probabilities, drop_intermediate=False
+    )
+    positive = int(labels.sum())
+    negative = len(labels) - positive
+    tp = true_positive_rate * positive
+    fp = false_positive_rate * negative
+    fn = positive - tp
+    tn = negative - fp
+    denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    scores = np.divide(
+        tp * tn - fp * fn, denominator,
+        out=np.full(len(thresholds), -1.0), where=denominator > 0,
+    )
+    scores[~np.isfinite(thresholds)] = -1.0
+    best = np.flatnonzero(np.isclose(scores, scores.max(), atol=1e-12))
+    selected = best[np.argmin(np.abs(thresholds[best] - 0.5))]
+    return float(thresholds[selected]), float(scores[selected])
 
 
 def tokenize(tokenizer, texts: pd.Series, max_length: int) -> tuple[torch.Tensor, ...]:
@@ -94,6 +117,8 @@ def train_seed(
     batch_size: int,
     max_epochs: int,
     max_train_batches: int | None,
+    early_stopping_patience: int,
+    threshold_mode: str,
 ) -> tuple[np.ndarray, dict[str, float | int]]:
     set_seed(seed)
     if device.type == "cuda":
@@ -137,6 +162,7 @@ def train_seed(
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
     best_loss = float("inf")
     best_state = None
+    best_epoch = 0
     stale = 0
     start = time.perf_counter()
     if device.type == "cuda":
@@ -167,22 +193,34 @@ def train_seed(
         ).item()
         if validation_loss < best_loss - 1e-5:
             best_loss = validation_loss
+            best_epoch = epoch
             best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
             stale = 0
         else:
             stale += 1
-            if stale >= 1:
+            if stale >= early_stopping_patience:
                 break
 
     model.load_state_dict(best_state)
+    validation_logits = predict(model, validation_loader, keys, device)
+    if threshold_mode == "validation_mcc":
+        threshold, validation_mcc = choose_validation_threshold(
+            labels[validation], validation_logits
+        )
+    else:
+        threshold = 0.5
+        validation_mcc = metrics(labels[validation], validation_logits)["mcc"]
     train_seconds = time.perf_counter() - start
     start = time.perf_counter()
     test_logits = predict(model, test_loader, keys, device)
     inference_seconds = time.perf_counter() - start
     result = {
         "epochs": epoch,
+        "best_epoch": best_epoch,
         "batch_size": batch_size,
         "best_validation_loss": best_loss,
+        "validation_selected_threshold": threshold,
+        "validation_mcc_at_selected_threshold": validation_mcc,
         "train_seconds": train_seconds,
         "inference_ms_per_message": inference_seconds * 1000 / len(test),
         "peak_gpu_memory_mb": torch.cuda.max_memory_allocated() / 1_000_000,
@@ -194,16 +232,23 @@ def train_seed(
 
 
 def main() -> None:
+    global MODEL_NAME
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--fold-file", type=Path)
+    parser.add_argument("--model-name", default=MODEL_NAME)
+    parser.add_argument("--artifact-prefix", default="finetuned_mbert")
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--max-length", type=int, default=128)
-    parser.add_argument("--max-epochs", type=int, default=3)
+    parser.add_argument("--max-epochs", type=int, default=4)
+    parser.add_argument("--early-stopping-patience", type=int, default=2)
+    parser.add_argument("--threshold-mode", choices=("validation_mcc", "fixed_0_5"),
+                        default="validation_mcc")
     parser.add_argument("--seeds", type=int, nargs="+", default=list(SEEDS))
     parser.add_argument("--max-train-batches", type=int)
     args = parser.parse_args()
+    MODEL_NAME = args.model_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = load_long_dataset(args.dataset)
@@ -222,11 +267,11 @@ def main() -> None:
     tokenization_seconds = time.perf_counter() - start
     labels = data["label"].to_numpy(dtype=np.int64)
 
-    checkpoint = args.output_dir / "finetuned_mbert_runs_checkpoint.csv"
+    checkpoint = args.output_dir / f"{args.artifact_prefix}_runs_checkpoint.csv"
     rows = pd.read_csv(checkpoint).to_dict("records") if checkpoint.exists() else []
     completed = {int(row["seed"]) for row in rows}
     for seed in args.seeds:
-        prediction_path = args.output_dir / f"finetuned_mbert_prediction_seed{seed}.csv"
+        prediction_path = args.output_dir / f"{args.artifact_prefix}_prediction_seed{seed}.csv"
         if seed in completed and prediction_path.exists():
             continue
         logits, costs = train_seed(
@@ -241,8 +286,12 @@ def main() -> None:
             args.batch_size,
             args.max_epochs,
             args.max_train_batches,
+            args.early_stopping_patience,
+            args.threshold_mode,
         )
-        values = metrics(labels[test], logits)
+        threshold = costs["validation_selected_threshold"]
+        values = metrics(labels[test], logits, threshold)
+        values["mcc_at_fixed_threshold_0_5"] = metrics(labels[test], logits)["mcc"]
         rows.append({"seed": seed, **values, **costs})
         probabilities = 1 / (1 + np.exp(-np.clip(logits, -30, 30)))
         pd.DataFrame(
@@ -253,14 +302,14 @@ def main() -> None:
                 "language_column": data.iloc[test]["language_column"].to_numpy(),
                 "label": labels[test],
                 "probability": probabilities,
-                "prediction": (probabilities >= 0.5).astype(np.int8),
+                "prediction": (probabilities >= threshold).astype(np.int8),
             }
         ).to_csv(prediction_path, index=False)
         pd.DataFrame(rows).to_csv(checkpoint, index=False)
         print(seed, values, costs, flush=True)
 
     runs = pd.DataFrame(rows)
-    runs.to_csv(args.output_dir / "finetuned_mbert_runs.csv", index=False)
+    runs.to_csv(args.output_dir / f"{args.artifact_prefix}_runs.csv", index=False)
     metadata = {
         "model": MODEL_NAME,
         "split_seed": SPLIT_SEED,
@@ -270,6 +319,8 @@ def main() -> None:
         "max_length": args.max_length,
         "batch_size": args.batch_size,
         "max_epochs": args.max_epochs,
+        "early_stopping_patience": args.early_stopping_patience,
+        "threshold_rule": args.threshold_mode,
         "learning_rate": 2e-5,
         "tokenization_seconds": tokenization_seconds,
         "device": str(device),
@@ -277,7 +328,7 @@ def main() -> None:
         "python": platform.python_version(),
         "torch": torch.__version__,
     }
-    (args.output_dir / "finetuned_mbert_metadata.json").write_text(
+    (args.output_dir / f"{args.artifact_prefix}_metadata.json").write_text(
         json.dumps(metadata, indent=2), encoding="utf-8"
     )
     print(runs.round(4).to_string(index=False))

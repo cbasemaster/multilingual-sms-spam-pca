@@ -1,0 +1,15 @@
+configuration,selected_dimension,runs
+mBERT+Qwen validation-selected PCA,768,6
+mBERT+Qwen validation-selected PCA,1024,4
+mBERT+Qwen validation-selected PCA,1536,6
+mBERT+Qwen validation-selected PCA,2048,9
+mBERT+Qwen+Char validation-selected PCA,768,6
+mBERT+Qwen+Char validation-selected PCA,1024,3
+mBERT+Qwen+Char validation-selected PCA,1536,8
+mBERT+Qwen+Char validation-selected PCA,2048,8
+Llama-2+Qwen validation-selected PCA,1024,10
+Llama-2+Qwen validation-selected PCA,1536,9
+Llama-2+Qwen validation-selected PCA,2048,6
+mBERT+Qwen2.5+Llama-2 validation-selected PCA,1024,7
+mBERT+Qwen2.5+Llama-2 validation-selected PCA,1536,10
+mBERT+Qwen2.5+Llama-2 validation-selected PCA,2048,8

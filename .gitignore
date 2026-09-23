@@ -9,8 +9,14 @@ venv/
 *.tmp
 data/
 results/
+!results/
+results/*
+!results/final_multiseed/
+!results/final_multiseed/*.csv
+!results/final_multiseed/*.json
 *.parquet
 *.csv
+!results/final_multiseed/*.csv
 *.npz
 .DS_Store
 Thumbs.db

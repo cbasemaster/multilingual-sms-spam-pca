@@ -1,81 +1,76 @@
 # Five-fold source-group evaluation
 
-This workflow reproduces the matched-fold results in the revised manuscript.
-It uses five stratified outer folds of retained source-message identifiers.
-Each test source group appears in exactly one fold. Standalone mBERT is
-evaluated with and without PCA at 256 and 512 dimensions; the other static
-and sparse feature families also retain PCA and no-PCA controls. A stratified 20% of the
-remaining groups forms that fold's validation partition. All fitted text
-features, scaling statistics, and projections use training data only. Model
-training seed 42 is held fixed across folds.
+This workflow reproduces the primary experiments in the revised manuscript.
+It uses five disjoint source-group test folds and five training seeds per fold
+(13, 21, 42, 87, and 101). A stratified 20% of the remaining source groups is
+used for validation in each fold. Text features, scaling statistics, projection
+operators, model selection, and decision thresholds are fitted on training or
+validation data only; the test fold is evaluated once per fitted model.
 
 ## Prerequisites
 
-Install `requirements.txt` and obtain the public multilingual dataset and
-pretrained checkpoints listed in the main `README.md`. The base extraction
-commands there first create these intermediate files (large matrices are not
-stored in Git):
+Install `requirements.txt`, obtain the public multilingual dataset, and prepare
+the frozen embedding matrices described in the main `README.md`. The following
+intermediate files are required but are not stored in Git because of their size:
 
 - `results/grouped_embedding_fusion/training_vocabulary.csv`
 - `results/grouped_embedding_fusion/embedding_bert-base-multilingual-uncased.npy`
 - `results/grouped_embedding_fusion/embedding_distilbert-base-multilingual-cased.npy`
 - `results/grouped_qwen_embedding_fusion/embedding_qwen2.5-7b-instruct_nf4.npy`
 
-The Qwen2.5 path below must point to the downloaded official checkpoint.
-Commands are shown for PowerShell from the repository root.
+The commands below are intended for PowerShell from the repository root.
 
 ```powershell
 $data = 'data/sms_spam_multilingual.parquet'
 $cv = 'results/source_group_cv5'
+$runs = 'results/multiseed_all'
+$seeds = 13, 21, 42, 87, 101
+
 python analysis/make_source_group_folds.py --dataset $data --output-dir $cv
 python analysis/prepare_cv5_embedding_matrices.py --dataset $data --fold-dir $cv --base-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --base-mbert results/grouped_embedding_fusion/embedding_bert-base-multilingual-uncased.npy --base-distil results/grouped_embedding_fusion/embedding_distilbert-base-multilingual-cased.npy --base-qwen results/grouped_qwen_embedding_fusion/embedding_qwen2.5-7b-instruct_nf4.npy --qwen-model models/Qwen2.5-7B-Instruct
 python analysis/grouped_baseline_benchmark.py --dataset $data --fold-dir $cv --output-dir "$cv/classical"
-for ($fold = 1; $fold -le 5; $fold++) {
-    python analysis/run_cv5_fusion_core.py --dataset $data --fold-dir $cv --fold $fold --end-index 4
-    python analysis/run_cv5_fusion_core.py --dataset $data --fold-dir $cv --fold $fold --only-index 5
-    python analysis/run_cv5_fusion_core.py --dataset $data --fold-dir $cv --fold $fold --start-index 6 --end-index 10
-    python analysis/run_cv5_fusion_core.py --dataset $data --fold-dir $cv --fold $fold --only-index 11
-    python analysis/run_cv5_fusion_core.py --dataset $data --fold-dir $cv --fold $fold --start-index 12
-    python analysis/evaluate_tfidf_pca1024_test.py --dataset $data --fold-file "$cv/fold_$fold.npz" --seeds 42 --output-dir "$cv/fold_$fold/sparse_pca1024"
-    python analysis/evaluate_tfidf_svd1024_test.py --dataset $data --fold-file "$cv/fold_$fold.npz" --seeds 42 --output-dir "$cv/fold_$fold/sparse_svd1024"
-    python analysis/finetune_mbert_grouped.py --dataset $data --fold-file "$cv/fold_$fold.npz" --output-dir "$cv/fold_$fold/finetuned_mbert" --batch-size 32 --max-length 64 --max-epochs 1 --seeds 42
-}
-python analysis/summarize_source_group_cv5.py --fold-dir $cv
-python analysis/paired_cv5_bootstrap.py --dataset $data --fold-dir $cv --repetitions 2000
-python analysis/paired_sparse_projection_cv5.py --dataset $data --fold-dir $cv --repetitions 2000
-python analysis/paired_static_projection_cv5.py --dataset $data --fold-dir $cv --repetitions 2000
+python analysis/run_cv5_multiseed_all_static.py --dataset $data --fold-dir $cv --output-dir $runs --seeds $seeds
+python analysis/summarize_multiseed_static.py --runs "$runs/all_test_fold_runs.csv" --dataset $data --fold-dir $cv --prediction-dir "$runs/predictions" --output-dir "$runs/summary" --bootstrap-repetitions 2000
+python analysis/plot_cv5_tradeoff.py --fold-dir $cv --runs "$runs/all_test_fold_runs.csv" --output-dir "$runs/figures"
 ```
 
-## Llama-2 and three-encoder extensions
+The static suite includes PCA and no-PCA variants within every reported feature
+family, validation-selected PCA widths, a 1,024-dimensional random-projection
+control, sparse character and word TF-IDF baselines, Llama-2/Qwen2.5 fusion,
+and three-encoder fusion. PCA dimensions are selected by validation MCC, never
+by test performance.
 
-The Llama-2 rows use frozen averages of the raw input-token embedding table
-from `meta-llama/Llama-2-7b`, not full-model contextual outputs and not the
-precomputed Llama vectors from the original message-level study. Obtain the
-checkpoint through its official gated distribution under its license and place
-`consolidated.00.pth`, `tokenizer.model`, and `params.json` in
-`models/Llama-2-7b`. Model weights and authentication credentials are not
-included in this archive. The existing mBERT and Qwen fold matrices from the
-commands above are also required.
+## Fine-tuned mBERT
+
+Fine-tuned mBERT is evaluated on the same five outer test folds and five seeds.
+Early stopping and the probability threshold are selected from the validation
+partition independently for each run.
 
 ```powershell
-python analysis/prepare_cv5_llama_embeddings.py --fold-dir $cv --model-path models/Llama-2-7b --batch-size 256
+$transformers = 'results/transformer_multiseed'
 for ($fold = 1; $fold -le 5; $fold++) {
-    python analysis/run_cv5_llama_fusion.py --dataset $data --fold-dir $cv --fold $fold
-    python analysis/run_cv5_triple_fusion.py --dataset $data --fold-dir $cv --fold $fold
+    python analysis/finetune_mbert_grouped.py --dataset $data --fold-file "$cv/fold_$fold.npz" --output-dir "$transformers/fold_$fold/mbert" --batch-size 32 --max-length 64 --max-epochs 4 --early-stopping-patience 2 --threshold-mode validation_mcc --seeds $seeds
 }
-python analysis/summarize_cv5_llama_fusion.py --dataset $data --fold-dir $cv --repetitions 2000
-python analysis/summarize_cv5_triple_fusion.py --dataset $data --fold-dir $cv --repetitions 2000
+python analysis/summarize_transformer_multiseed.py --dataset $data --fold-dir $cv --transformer-dir $transformers --output-dir "$transformers/summary" --bootstrap-repetitions 2000
 ```
 
-Both extensions use the saved five disjoint source-group test folds and one
-training seed per fold. Candidate PCA widths are chosen using only validation
-MCC. The manuscript's supplementary reproducibility archive includes fold
-runs, held-out predictions, summaries, and paired source-group bootstrap
-results. This code repository does not redistribute SMS texts, predictions,
-or large regenerated embedding matrices.
+## External-corpus evaluation
 
-The index ranges only limit per-process memory; completed configurations are
-skipped on restart. `all_test_fold_summary.csv` reports means and sample
-standard deviations over held-out folds. Paired intervals resample source
-groups from pooled out-of-fold predictions, conditional on the trained models;
-they do not estimate variability across retraining seeds.
+External corpora are evaluated without fitting to external labels. Supply the
+audited corpus files as `name=path` entries and reuse the 25 development models.
+
+```powershell
+python analysis/run_external_validation_multiseed.py --development $data --fold-dir $cv --static-runs "$runs/all_test_fold_runs.csv" --external ExAIS=data/external/exais.csv TurkishSMS=data/external/turkish_sms.csv YouTube=data/external/youtube_spam.csv SpamAssassin=data/external/spamassassin.csv --seed42-model-dir results/source_group_cv5 --output-dir results/external_validation_multiseed --seeds $seeds
+```
+
+## Llama-2 checkpoint
+
+The Llama-2 rows use frozen averages of the raw input-token embedding table from
+`meta-llama/Llama-2-7b`, not full-model contextual outputs. Obtain the official
+gated checkpoint under its license and place `consolidated.00.pth`,
+`tokenizer.model`, and `params.json` in `models/Llama-2-7b`. Model weights and
+authentication credentials are not distributed in this repository.
+
+The released aggregate summaries contain no SMS text, per-message predictions,
+credentials, or model weights. Paired bootstrap intervals resample source groups
+from pooled out-of-fold predictions and therefore preserve the evaluation unit.

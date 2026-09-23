@@ -1,0 +1,4 @@
+reference,comparison,reference_oof_mcc,comparison_oof_mcc,oof_mcc_difference,source_group_bootstrap_ci_low,source_group_bootstrap_ci_high,source_groups,repetitions
+Fine-tuned mBERT,Character TF-IDF + logistic regression,0.902643875435752,0.863513981007628,0.03912989442812398,0.030535287898277516,0.048556168587243646,5157,2000
+Fine-tuned mBERT,mBERT+Qwen validation-selected PCA,0.902643875435752,0.8080901560688025,0.09455371936694945,0.0844110724635281,0.10595110874068753,5157,2000
+Character TF-IDF + logistic regression,mBERT+Qwen validation-selected PCA,0.863513981007628,0.8080901560688025,0.05542382493882547,0.0472828988760272,0.06455775683677058,5157,2000

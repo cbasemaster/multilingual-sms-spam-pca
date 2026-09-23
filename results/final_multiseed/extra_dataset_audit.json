@@ -1,0 +1,86 @@
+{
+  "development_samples": 105443,
+  "external_labels_used_for_training_or_selection": false,
+  "near_overlap_definition": "SimHash candidate retrieval followed by SequenceMatcher ratio >= 0.90 on the development cleaning function; exact cleaned-text matches are reported separately.",
+  "sources": {
+    "YouTubeSpamCollection": {
+      "url": "https://archive.ics.uci.edu/dataset/380/youtube+spam+collection",
+      "doi": "10.24432/C58885"
+    },
+    "SpamAssassinPublicCorpus": {
+      "url": "https://spamassassin.apache.org/old/publiccorpus/"
+    }
+  },
+  "source_files": {
+    "YouTubeSpamCollection": [
+      {
+        "path": "output\\external_validation\\raw_extra\\youtube_spam_collection.zip",
+        "sha256": "bd6182891adb3cfc8334b82c062176dfbebc563bf0ba07e31c2645f916865a0a"
+      }
+    ],
+    "SpamAssassinPublicCorpus": [
+      {
+        "path": "output\\external_validation\\raw_extra\\20030228_easy_ham.tar.bz2",
+        "sha256": "2b7b65904bcfcc31d2b5f51946f2d261370b257402cbbd62930b46ab83367438"
+      },
+      {
+        "path": "output\\external_validation\\raw_extra\\20030228_easy_ham_2.tar.bz2",
+        "sha256": "b4bd3dc5ae5b40f38e99a0e41ad7d16b428b56e818e3a6ffa07330d62004dd38"
+      },
+      {
+        "path": "output\\external_validation\\raw_extra\\20030228_hard_ham.tar.bz2",
+        "sha256": "ce2ce67880643dbde65ea7f85bffbfe4417349c4bd80b6b0de56262ae6b0a9c9"
+      },
+      {
+        "path": "output\\external_validation\\raw_extra\\20030228_spam.tar.bz2",
+        "sha256": "c08debc32413804949a866be45ef78195cec2cbafd1da744ed76cdb860589743"
+      },
+      {
+        "path": "output\\external_validation\\raw_extra\\20050311_spam_2.tar.bz2",
+        "sha256": "44280a0e28bf7645b2279e8e42659271ad82c6f40bf8d364dbda7f1df344a765"
+      }
+    ]
+  },
+  "datasets": {
+    "YouTubeSpamCollection": {
+      "raw_records": 1956,
+      "raw_class_counts": {
+        "0": 951,
+        "1": 1005
+      },
+      "empty_after_cleaning_records": 68,
+      "conflicting_label_records_removed": 0,
+      "exact_duplicate_records_removed": 213,
+      "unique_nonconflicting_records": 1675,
+      "raw_overlap_with_development": 0,
+      "clean_overlap_with_development": 4,
+      "additional_near_overlap_at_0_90": 0,
+      "primary_records": 1671,
+      "primary_ham": 890,
+      "primary_spam": 781,
+      "strict_records": 1671,
+      "strict_ham": 890,
+      "strict_spam": 781
+    },
+    "SpamAssassinPublicCorpus": {
+      "raw_records": 6046,
+      "raw_class_counts": {
+        "0": 4150,
+        "1": 1896
+      },
+      "empty_after_cleaning_records": 0,
+      "conflicting_label_records_removed": 0,
+      "exact_duplicate_records_removed": 119,
+      "unique_nonconflicting_records": 5927,
+      "raw_overlap_with_development": 0,
+      "clean_overlap_with_development": 0,
+      "additional_near_overlap_at_0_90": 0,
+      "primary_records": 5927,
+      "primary_ham": 4110,
+      "primary_spam": 1817,
+      "strict_records": 5927,
+      "strict_ham": 4110,
+      "strict_spam": 1817
+    }
+  }
+}

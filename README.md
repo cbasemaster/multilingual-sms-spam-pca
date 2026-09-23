@@ -3,13 +3,10 @@
 This repository contains the executable research code for the
 leakage-controlled experiments reported in the revised manuscript
 "Multilingual SMS Spam Detection via PCA-Based Embedding Fusion."
-The principal Table 7 evaluation uses five disjoint source-group test folds;
-the earlier fixed-split workflow is retained for comparison.
-
-An earlier fixed-split release is archived at
-[https://doi.org/10.5281/zenodo.22788881](https://doi.org/10.5281/zenodo.22788881)
-(release `v1.0.5`, commit `ce8003a`). That DOI does not identify the five-fold
-Table 7 extension.
+The principal Table 7 neural evaluation uses five disjoint source-group test
+folds and five training seeds per fold. Sparse controls use the same outer
+folds with fixed estimator settings. Earlier message-level and fixed-split
+workflows are retained only for comparison.
 
 The workflow covers source-group splitting, conventional text baselines,
 static embedding fusion, dimensionality-reduction controls, fine-tuned mBERT,
@@ -42,6 +39,15 @@ source message are assigned to the same data partition.
   PCA-1024 controls for the same character/word TF-IDF features and classifiers.
 - `analysis/audit_embedding_extraction.py`: native-tokenizer embedding audit.
 - `analysis/finetune_mbert_grouped.py`: grouped fine-tuned mBERT experiment.
+- `analysis/run_cv5_multiseed_all_static.py`: complete five-fold by five-seed
+  static-vector CNN evaluation.
+- `analysis/summarize_multiseed_static.py`: 25-run summaries, validation-based
+  width selection, fold-clustered comparisons, and source-group bootstrap.
+- `analysis/run_external_validation_multiseed.py`: 25-model external-corpus
+  and perturbation evaluation.
+- `analysis/summarize_transformer_multiseed.py` and
+  `analysis/compare_mbert_multiseed.py`: repeated-run fine-tuned-mBERT summary
+  and paired source-group comparisons.
 - `analysis/summarize_*.py`: statistical and language-level summaries.
 - `analysis/make_source_group_folds.py`, `prepare_cv5_embedding_matrices.py`,
   `run_cv5_fusion_core.py`, and `summarize_source_group_cv5.py`: the five-fold
@@ -53,6 +59,8 @@ source message are assigned to the same data partition.
   `summarize_cv5_triple_fusion.py`.
 - `REPRODUCE_CV5.md`: commands and partition details for the five-fold results.
 - `requirements.txt`: verified Python dependencies.
+- `results/final_multiseed/`: final aggregate numerical results and SHA-256
+  checksums. No message text or per-message prediction is included.
 
 The repository intentionally does not redistribute SMS texts or per-message
 predictions. The scripts write all generated splits, predictions, summaries,
@@ -85,8 +93,9 @@ these source-group scripts and is not distributed here.
 ## Reproduction
 
 Create an isolated Python environment and install the dependencies. Follow
-`REPRODUCE_CV5.md` for the principal five-fold Table 7 experiments. The
-commands below reproduce the earlier fixed-split experiments. Replace
+`REPRODUCE_CV5.md` for the principal five-fold by five-seed Table 7 and
+fine-tuned-mBERT experiments. The commands below reproduce the earlier
+fixed-split experiments. Replace
 `<dataset.parquet>` with the prepared multilingual dataset path.
 
 ```powershell
@@ -104,17 +113,18 @@ python analysis/evaluate_all_pca_dimensions_test.py --dataset <dataset.parquet> 
 python analysis/evaluate_distil_mbert_pca1024_test.py --dataset <dataset.parquet> --source-dir results/grouped_embedding_fusion --output-dir results/distil_mbert_pca1024_test --batch-size 1024 --max-epochs 30 --max-length 128
 python analysis/evaluate_tfidf_svd1024_test.py --dataset <dataset.parquet> --output-dir results/tfidf_svd1024_test --svd-iterations 4
 python analysis/evaluate_tfidf_pca1024_test.py --dataset <dataset.parquet> --output-dir results/tfidf_pca1024_test --power-iterations 4
-python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-dir results/finetuned_mbert_grouped --batch-size 32 --max-length 64 --max-epochs 1 --seeds 13 42 101
+python analysis/finetune_mbert_grouped.py --dataset <dataset.parquet> --output-dir results/finetuned_mbert_grouped --batch-size 32 --max-length 64 --max-epochs 4 --early-stopping-patience 2 --threshold-mode validation_mcc --seeds 13 21 42 87 101
 python analysis/summarize_finetuned_mbert.py --audit-dir results --bootstrap-repetitions 1000
 ```
 
-The earlier static-fusion experiments use one fixed source-group partition (split seed
-42) and CNN seeds 13, 21, 42, 87, and 101. Download the official Qwen2.5
+The commands above reproduce the earlier fixed-partition audit; the manuscript's
+primary results use the five-fold by five-seed workflow in `REPRODUCE_CV5.md`.
+Download the official Qwen2.5
 checkpoint to the path passed through `--model-path`; it is loaded in NF4 only
 for offline vocabulary extraction. The PCA sweep excludes the padding entry
 from fitted transformations and resets it to zero afterward. Conventional
-baselines use five grouped split seeds. Fine-tuned mBERT uses seeds 13, 42,
-and 101.
+baselines and fine-tuned mBERT use the same five source-group folds and training
+seeds 13, 21, 42, 87, and 101.
 
 ## Scope
 
@@ -123,7 +133,18 @@ historical message-level tables are retained in the manuscript only as explicitl
 labeled exploratory results and are not the primary evidence of the revised
 study.
 
+## Final repeated-run results
+
+The final static suite contains 25 held-out runs for each configuration. Mean
+MCC is 0.7906 ± 0.0215 for validation-selected mBERT/Qwen2.5 PCA and
+0.7922 ± 0.0161 for validation-selected mBERT/Qwen2.5/character fusion; their
+paired ensemble difference is not separated from zero. Fine-tuned mBERT obtains
+0.8853 ± 0.0160 MCC. External results are reported for ExAIS, TurkishSMS,
+YouTube Spam Collection, and SpamAssassin Public Corpus without external-label
+adaptation.
+
 ## Citation
 
-The DOI `10.5281/zenodo.22788881` cites the earlier `v1.0.5` release only.
-Do not use it as the permanent identifier for the five-fold Table 7 extension.
+Use the version-specific Zenodo DOI stated in the latest GitHub release. Older
+DOIs identify earlier experimental snapshots and should not be used for the
+final five-fold by five-seed results.
