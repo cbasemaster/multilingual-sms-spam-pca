@@ -30,8 +30,8 @@ python analysis/make_source_group_folds.py --dataset $data --output-dir $cv
 python analysis/prepare_cv5_embedding_matrices.py --dataset $data --fold-dir $cv --base-vocabulary results/grouped_embedding_fusion/training_vocabulary.csv --base-mbert results/grouped_embedding_fusion/embedding_bert-base-multilingual-uncased.npy --base-distil results/grouped_embedding_fusion/embedding_distilbert-base-multilingual-cased.npy --base-qwen results/grouped_qwen_embedding_fusion/embedding_qwen2.5-7b-instruct_nf4.npy --qwen-model models/Qwen2.5-7B-Instruct
 python analysis/grouped_baseline_benchmark.py --dataset $data --fold-dir $cv --output-dir "$cv/classical"
 python analysis/run_cv5_multiseed_all_static.py --dataset $data --fold-dir $cv --output-dir $runs --seeds $seeds
-python analysis/summarize_multiseed_static.py --runs "$runs/all_test_fold_runs.csv" --dataset $data --fold-dir $cv --prediction-dir "$runs/predictions" --output-dir "$runs/summary" --bootstrap-repetitions 2000
-python analysis/plot_cv5_tradeoff.py --fold-dir $cv --runs "$runs/all_test_fold_runs.csv" --output-dir "$runs/figures"
+python analysis/summarize_multiseed_static.py --runs "$runs/static_multiseed_runs.csv" --dataset $data --fold-dir $cv --prediction-dir "$runs/predictions" --output-dir "$runs/summary" --bootstrap-repetitions 2000
+python analysis/plot_cv5_tradeoff.py --fold-dir $cv --runs "$runs/static_multiseed_runs.csv" --output-dir "$runs/figures"
 ```
 
 The static suite includes PCA and no-PCA variants within every reported feature
@@ -39,6 +39,33 @@ family, validation-selected PCA widths, a 1,024-dimensional random-projection
 control, sparse character and word TF-IDF baselines, Llama-2/Qwen2.5 fusion,
 and three-encoder fusion. PCA dimensions are selected by validation MCC, never
 by test performance.
+
+## Matched fusion and vocabulary controls
+
+Run the existing static suite first. The following adds averaging and
+input-dependent MoE for mBERT/Qwen2.5 and Llama-2/Qwen2.5, and computes
+equal-weight late fusion from the matched branch predictions. It also compares
+training-only and full-corpus vocabulary fitting for DistilBERT/mBERT PCA-1024
+on identical folds, training repetitions, and classifier settings. The
+full-vocabulary configuration is a sensitivity diagnostic, not a primary
+leakage-controlled result.
+
+```powershell
+$gaps = 'results/revision_gap_experiments'
+python analysis/run_revision_gap_experiments.py --dataset $data --fold-dir $cv --static-dir $runs --output-dir $gaps --mode all
+python analysis/test_revision_gap_experiments.py
+python analysis/summarize_revision_gap_experiments.py --fold-dir $cv --static-dir $runs --output-dir $gaps --figure-output "$gaps/figures/grouped_confusion.pdf"
+```
+
+The runner checkpoints each completed evaluation and can resume with the same
+arguments. Large aligned fusion matrices are held in memory rather than written
+to disk. Frozen encoder weights and intermediate embedding matrices remain
+local. The small PCA diagnostic cache and processed messages are excluded from
+the public numerical archive. Public results include mean/standard-deviation
+summaries, fold-clustered comparisons, paired source-group bootstrap intervals,
+explained variance for all fitted combinations, and matched confusion counts.
+Late-fusion cost fields sum the measured independent branch workloads; they do
+not measure aggregation overhead or concurrent execution latency.
 
 ## Fine-tuned mBERT
 

@@ -43,6 +43,13 @@ source message are assigned to the same data partition.
   static-vector CNN evaluation.
 - `analysis/summarize_multiseed_static.py`: 25-run summaries, validation-based
   width selection, fold-clustered comparisons, and source-group bootstrap.
+- `analysis/run_revision_gap_experiments.py`: matched averaging, trainable
+  source gating, and late-fusion controls for mBERT/Qwen2.5 and
+  Llama-2/Qwen2.5, plus a separate DistilBERT/mBERT vocabulary-scope diagnostic.
+- `analysis/summarize_revision_gap_experiments.py`: cumulative explained
+  variance, paired source-group intervals, and matched confusion matrices.
+- `analysis/test_revision_gap_experiments.py`: checks for source alignment,
+  gate gradients, and equivalence of training-time gating and frozen lookup.
 - `analysis/run_external_validation_multiseed.py`: 25-model external-corpus
   and perturbation evaluation.
 - `analysis/summarize_transformer_multiseed.py` and
@@ -61,6 +68,10 @@ source message are assigned to the same data partition.
 - `requirements.txt`: verified Python dependencies.
 - `results/final_multiseed/`: final aggregate numerical results and SHA-256
   checksums. No message text or per-message prediction is included.
+- `results/revision_gap_experiments/`: the additional matched-control metrics,
+  paired intervals, explained-variance summaries, and confusion counts, with
+  SHA-256 checksums. The full-vocabulary experiment is diagnostic only and
+  is not pooled with the training-only primary results.
 
 The repository intentionally does not redistribute SMS texts or per-message
 predictions. The scripts write all generated splits, predictions, summaries,
@@ -142,6 +153,16 @@ paired ensemble difference is not separated from zero. Fine-tuned mBERT obtains
 0.8853 ± 0.0160 MCC. External results are reported for ExAIS, TurkishSMS,
 YouTube Spam Collection, and SpamAssassin Public Corpus without external-label
 adaptation.
+
+The matched fusion controls add 25 evaluations per method and encoder pair.
+For mBERT/Qwen2.5, averaging, source gating, and late fusion yield mean MCC
+0.7462, 0.7658, and 0.7855; selected PCA yields 0.7906. Its paired ensemble
+contrast with late fusion includes zero. For Llama-2/Qwen2.5, late fusion
+yields 0.8173 compared with 0.7816 for selected PCA, with a negative
+PCA-minus-late-fusion interval. The separate DistilBERT/mBERT PCA-1024
+diagnostic yields 0.7155 with full-vocabulary fitting versus 0.7399 with
+training-only fitting. Full results, uncertainty, and scope are retained in
+`results/revision_gap_experiments/`.
 
 ## Citation
 

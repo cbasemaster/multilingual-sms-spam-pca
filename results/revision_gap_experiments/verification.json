@@ -1,0 +1,10 @@
+{
+  "controls": 7,
+  "evaluations": 175,
+  "folds": 5,
+  "repetitions_per_fold": 5,
+  "source_groups": 5157,
+  "samples": 105443,
+  "full_vocabulary_is_diagnostic_only": true,
+  "late_fusion_reuses_matched_individual_branches": true
+}

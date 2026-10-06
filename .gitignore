@@ -14,9 +14,13 @@ results/*
 !results/final_multiseed/
 !results/final_multiseed/*.csv
 !results/final_multiseed/*.json
+!results/revision_gap_experiments/
+!results/revision_gap_experiments/*.csv
+!results/revision_gap_experiments/verification.json
 *.parquet
 *.csv
 !results/final_multiseed/*.csv
+!results/revision_gap_experiments/*.csv
 *.npz
 .DS_Store
 Thumbs.db
